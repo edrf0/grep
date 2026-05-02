@@ -22,24 +22,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Parse command line arguments
     let args = Args::parse();
 
-    // Compile the regex pattern (handles error if the regex is invalid)
+    // Compile the regex pattern
     let re = Regex::new(&args.keyword)?;
 
     // Open the file using the provided path
     let file = File::open(&args.path)?;
-    let reader = BufReader::new(file);
+    let mut reader = BufReader::new(file);
 
-    for line in reader.lines() {
-        // If valid we unwrap the String otherwise we ignore the line
-        let line = match line {
-            Ok(line) => line,
-            Err(_) => continue,
-        };
+    // Reusable buffer to avoid repeated heap allocations per line read
+    let mut line = String::new();
 
-        // Pattern matching
+    // Reads lines until Ok(0) is returned meaning the stream has reached EOF
+    while reader.read_line(&mut line)? > 0 {
+        // Keyword matching
         if re.is_match(&line) {
-            println!("{}", line);
+            // print! is used because the read_line method includes the \n character
+            print!("{line}");
         }
+        // String is cleared so its current capacity be reused without further heap allocations
+        line.clear();
     }
 
     Ok(())
